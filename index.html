@@ -391,12 +391,14 @@
         // Utility function to show/hide elements with animation
         function showElement(element, displayType = 'flex') {
             element.style.display = displayType;
+            element.classList.remove('hidden');
             element.classList.add('fade-in');
         }
 
         function hideElement(element) {
             element.style.display = 'none';
             element.classList.remove('fade-in');
+            element.classList.add('hidden');
         }
 
         // Standard Modal functionality
@@ -654,7 +656,7 @@
 
             // Keyboard navigation
             document.addEventListener('keydown', (e) => {
-                if (lightbox.style.display !== 'none') {
+                if (!lightbox.classList.contains('hidden') && lightbox.style.display === 'flex') {
                     switch (e.key) {
                         case 'Escape':
                             closeLightbox();
