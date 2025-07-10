@@ -188,10 +188,10 @@
                 <div>
                     <h3 class="text-xl font-medium text-gray-900 mb-4">Image Lightbox Gallery</h3>
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <img src="https://picsum.photos/300/200?random=1" alt="Gallery Image 1" class="gallery-image w-full h-32 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity" data-index="0">
-                        <img src="https://picsum.photos/300/200?random=2" alt="Gallery Image 2" class="gallery-image w-full h-32 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity" data-index="1">
-                        <img src="https://picsum.photos/300/200?random=3" alt="Gallery Image 3" class="gallery-image w-full h-32 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity" data-index="2">
-                        <img src="https://picsum.photos/300/200?random=4" alt="Gallery Image 4" class="gallery-image w-full h-32 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity" data-index="3">
+                        <img src="https://picsum.photos/800/600?random=1" alt="Gallery Image 1" class="gallery-image w-full h-32 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity" data-index="0">
+                        <img src="https://picsum.photos/800/600?random=2" alt="Gallery Image 2" class="gallery-image w-full h-32 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity" data-index="1">
+                        <img src="https://picsum.photos/800/600?random=3" alt="Gallery Image 3" class="gallery-image w-full h-32 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity" data-index="2">
+                        <img src="https://picsum.photos/800/600?random=4" alt="Gallery Image 4" class="gallery-image w-full h-32 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity" data-index="3">
                     </div>
                 </div>
             </section>
@@ -359,22 +359,33 @@
     <!-- Lightbox -->
     <div id="lightbox" class="fixed inset-0 bg-black bg-opacity-90 hidden items-center justify-center z-50">
         <div class="relative max-w-4xl max-h-full p-4">
+            <!-- Loading Spinner -->
+            <div id="lightboxLoader" class="absolute inset-0 flex items-center justify-center">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
+            </div>
+            
             <button id="closeLightbox" class="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors z-10">
                 <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
             </button>
-            <button id="prevImage" class="absolute left-4 top-1/2 transform -translate-y-1/2 text-white hover:text-gray-300 transition-colors">
-                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button id="prevImage" class="absolute left-4 top-1/2 transform -translate-y-1/2 text-white hover:text-gray-300 transition-colors bg-black bg-opacity-50 rounded-full p-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
                 </svg>
             </button>
-            <button id="nextImage" class="absolute right-4 top-1/2 transform -translate-y-1/2 text-white hover:text-gray-300 transition-colors">
-                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button id="nextImage" class="absolute right-4 top-1/2 transform -translate-y-1/2 text-white hover:text-gray-300 transition-colors bg-black bg-opacity-50 rounded-full p-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                 </svg>
             </button>
-            <img id="lightboxImage" src="" alt="" class="max-w-full max-h-full object-contain rounded-lg">
+            
+            <!-- Image Counter -->
+            <div id="imageCounter" class="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white bg-black bg-opacity-50 px-3 py-1 rounded-full text-sm">
+                <span id="currentImageNum">1</span> / <span id="totalImages">4</span>
+            </div>
+            
+            <img id="lightboxImage" src="" alt="" class="max-w-full max-h-full object-contain rounded-lg opacity-0 transition-opacity duration-300">
         </div>
     </div>
 
@@ -387,6 +398,21 @@
             'https://picsum.photos/800/600?random=3',
             'https://picsum.photos/800/600?random=4'
         ];
+        
+        // Preload images for better performance
+        const preloadedImages = new Map();
+        
+        function preloadImage(src) {
+            if (!preloadedImages.has(src)) {
+                const img = new Image();
+                img.src = src;
+                preloadedImages.set(src, img);
+            }
+            return preloadedImages.get(src);
+        }
+        
+        // Preload all gallery images
+        galleryImages.forEach(src => preloadImage(src));
 
         // Utility function to show/hide elements with animation
         function showElement(element, displayType = 'flex') {
@@ -618,8 +644,39 @@
 
             function openLightbox(index) {
                 currentImageIndex = index;
-                lightboxImage.src = galleryImages[currentImageIndex];
+                const loader = document.getElementById('lightboxLoader');
+                const currentImageNum = document.getElementById('currentImageNum');
+                const totalImages = document.getElementById('totalImages');
+                
+                // Update counter
+                currentImageNum.textContent = index + 1;
+                totalImages.textContent = galleryImages.length;
+                
+                // Show lightbox and loader
                 showElement(lightbox);
+                showElement(loader);
+                lightboxImage.style.opacity = '0';
+                
+                // Load image
+                const img = preloadImage(galleryImages[index]);
+                
+                if (img.complete) {
+                    // Image already loaded
+                    lightboxImage.src = img.src;
+                    hideElement(loader);
+                    lightboxImage.style.opacity = '1';
+                } else {
+                    // Wait for image to load
+                    img.onload = () => {
+                        lightboxImage.src = img.src;
+                        hideElement(loader);
+                        lightboxImage.style.opacity = '1';
+                    };
+                    img.onerror = () => {
+                        hideElement(loader);
+                        lightboxImage.style.opacity = '1';
+                    };
+                }
             }
 
             function closeLightbox() {
@@ -627,13 +684,56 @@
             }
 
             function showPrevImage() {
-                currentImageIndex = (currentImageIndex - 1 + galleryImages.length) % galleryImages.length;
-                lightboxImage.src = galleryImages[currentImageIndex];
+                if (currentImageIndex > 0) {
+                    currentImageIndex--;
+                } else {
+                    currentImageIndex = galleryImages.length - 1;
+                }
+                updateLightboxImage();
             }
 
             function showNextImage() {
-                currentImageIndex = (currentImageIndex + 1) % galleryImages.length;
-                lightboxImage.src = galleryImages[currentImageIndex];
+                if (currentImageIndex < galleryImages.length - 1) {
+                    currentImageIndex++;
+                } else {
+                    currentImageIndex = 0;
+                }
+                updateLightboxImage();
+            }
+            
+            function updateLightboxImage() {
+                const loader = document.getElementById('lightboxLoader');
+                const currentImageNum = document.getElementById('currentImageNum');
+                
+                // Update counter
+                currentImageNum.textContent = currentImageIndex + 1;
+                
+                // Show loader and fade out current image
+                showElement(loader);
+                lightboxImage.style.opacity = '0';
+                
+                // Load new image
+                const img = preloadImage(galleryImages[currentImageIndex]);
+                
+                if (img.complete) {
+                    // Image already loaded
+                    setTimeout(() => {
+                        lightboxImage.src = img.src;
+                        hideElement(loader);
+                        lightboxImage.style.opacity = '1';
+                    }, 150); // Small delay for smooth transition
+                } else {
+                    // Wait for image to load
+                    img.onload = () => {
+                        lightboxImage.src = img.src;
+                        hideElement(loader);
+                        lightboxImage.style.opacity = '1';
+                    };
+                    img.onerror = () => {
+                        hideElement(loader);
+                        lightboxImage.style.opacity = '1';
+                    };
+                }
             }
 
             // Add click listeners to gallery thumbnails
